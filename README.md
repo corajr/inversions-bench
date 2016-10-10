@@ -2,7 +2,7 @@
 
 Shows several versions of a function to count inversions.
 
-See the [benchmarks](inv.html) for comparison.
+See the [benchmarks](https://corajr.github.io/inversions-bench/inv.html) for comparison.
 
 ## Usage
 
