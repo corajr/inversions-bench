@@ -3,6 +3,7 @@
 module Inversions ( inversions
                   , inversionsSeq
                   , inversionsList
+                  , inversionsListAndLength
                   , inversionsGeneric) where
 
 import Control.Arrow (first)
@@ -14,9 +15,11 @@ import qualified Data.Sequence as S
 -- consistent wrapper func for tests
 
 inversions :: (Ord a) => [a] -> ([a], Int)
-inversions = inversionsGeneric
+-- inversions = inversionsGeneric
 -- List version
 -- inversions = inversionsList
+-- List and length version
+inversions xs = inversionsListAndLength (xs, length xs)
 -- Seq version
 -- inversions = first toList . inversionsSeq . S.fromList
 
@@ -32,12 +35,31 @@ inversionsList xs = if n <= 1 then (xs, 0) else (d, x + y + z)
 
 countSplitInvList :: (Ord a) => [a] -> [a] -> ([a], Int)
 countSplitInvList = go ([], 0)
-  where go (acc, n) [] r = (reverse acc ++ r, n)
-        go (acc, n) l [] = (reverse acc ++ l, n)
+  where go (acc, n) [] r = ({-# SCC append_list #-} ({-# SCC reverse_list #-} reverse acc) ++ r, n)
+        go (acc, n) l [] = ({-# SCC append_list #-} ({-# SCC reverse_list #-} reverse acc) ++ l, n)
         go (acc, n) l@(x:xs) r@(y:ys) =
           if x > y
-          then go (y:acc, n + length l) l ys
+          then go (y:acc, n + {-# SCC length_list #-} length l) l ys
           else go (x:acc, n) xs r
+
+-- List version (pass length)
+inversionsListAndLength :: (Ord a) => ([a], Int) -> ([a], Int)
+inversionsListAndLength (xs, n) = if n <= 1 then (xs, 0) else (d, x + y + z)
+  where pivot = n `div` 2
+        right_length = n - pivot
+        (l, r) = splitAt pivot xs
+        (b, x) = inversionsListAndLength (l, pivot)
+        (c, y) = inversionsListAndLength (r, right_length)
+        (d, z) = countSplitInvListAndLength (b, pivot) (c, right_length)
+
+countSplitInvListAndLength :: (Ord a) => ([a], Int) -> ([a], Int) -> ([a], Int)
+countSplitInvListAndLength = go ([], 0)
+  where go (acc, n) ([], _) (r, _) = (reverse acc ++ r, n)
+        go (acc, n) (l, _) ([], _) = (reverse acc ++ l, n)
+        go (acc, n) (l@(x:xs), ln) (r@(y:ys), rn) =
+          if x > y
+          then go (y:acc, n + ln) (l, ln) (ys, rn - 1)
+          else go (x:acc, n) (xs, ln - 1) (r, rn)
 
 -- Sequence version
 
@@ -53,10 +75,10 @@ inversionsSeq xs = if n <= 1 then (xs, 0) else (d, x + y + z)
 countSplitInvSeq :: (Ord a) => Seq a -> Seq a -> (Seq a, Int)
 countSplitInvSeq = go (S.empty, 0)
   where go (acc, n) l r = case (S.viewl l, S.viewl r) of
-          (S.EmptyL, _) -> (acc <> r, n)
-          (_, S.EmptyL) -> (acc <> l, n)
+          (S.EmptyL, _) -> ({-# SCC append_seq #-} acc <> r, n)
+          (_, S.EmptyL) -> ({-# SCC append_seq #-} acc <> l, n)
           (x :< xs, y :< ys) -> if x > y
-                                then go (acc |> y, n + S.length l) l ys
+                                then go (acc |> y, n + {-# SCC length_seq #-} S.length l) l ys
                                 else go (acc |> x, n) xs r
 
 -- typeclass approach

@@ -16,6 +16,9 @@ main = defaultMain [
     bgroup "inversionsList"
       [ bench "[10000, 9999 .. 1]" $ whnf inversionsList ex1
       ]
+  , bgroup "inversionsListAndLength"
+      [ bench "[10000, 9999 .. 1]" $ whnf inversionsListAndLength (ex1, 10000)
+      ]
   , bgroup "inversionsSeq"
       [ bench "[10000, 9999 .. 1]" $ whnf inversionsSeq ex1Seq
       ]
