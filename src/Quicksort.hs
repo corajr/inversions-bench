@@ -3,32 +3,28 @@ module Quicksort where
 import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
 import qualified Data.Vector.Unboxed.Mutable as MV
-import Data.STRef
-import Control.Monad (forM_, when)
+import Control.Monad (foldM)
 
 quicksort :: Vector Int -> Vector Int
 quicksort xs = V.create $ do
-  v <- V.unsafeThaw xs
-  let n = MV.length v - 1
-  quicksort' v 0 n
+  v <- V.thaw xs
+  quicksort' v 0 (MV.length v - 1)
   return v
-  where
-    quicksort' v l r =
-      if r - l <= 0
-      then return ()
-      else do
-        pivot  <- partition v l r
-        quicksort' v l (pivot - 1)
-        quicksort' v (pivot + 1) r
-    partition v l r = do
-      p <- MV.read v l
-      iVar <- newSTRef (l + 1)
-      forM_ [l + 1 .. r] $ \j -> do
-        aj <- MV.read v j
-        when (aj < p) $ do
-          i <- readSTRef iVar
-          MV.swap v j i
-          writeSTRef iVar (i + 1)
-      i <- readSTRef iVar
-      MV.swap v l (i - 1)
-      return (i - 1)
+    where
+      quicksort' v l r
+        | r - l <= 0 = return ()
+        | otherwise = do
+            pivot <- partition v l r
+            quicksort' v l (pivot - 1)
+            quicksort' v (pivot + 1) r
+      partition v l r = do
+        p <- MV.read v l
+        let start = l + 1
+        i <- foldM (f p) start [start .. r]
+        MV.swap v l (i - 1)
+        return (i - 1)
+          where f p i j = do
+                  aj <- MV.read v j
+                  if (aj < p)
+                    then MV.swap v j i >> return (i + 1)
+                    else return i
